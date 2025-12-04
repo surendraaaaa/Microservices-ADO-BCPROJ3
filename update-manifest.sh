@@ -31,4 +31,4 @@ fi
 rm -rf "$TMP_DIR"
 echo "✅ Updated $SERVICE_NAME manifest to $REGISTRY/$SERVICE_NAME:$NEW_TAG"
 
-# pipeline urls git remote set-url origin https://ashukumavat2410:FAYmTIsk9aAS2OU6ROwZYs4C@dev.azure.com/ashukumavat2410/Microservices-CICD/_git/Microservices-CICD
+# pipeline urls git remote set-url origin https://ashukumavat2410:<token>@dev.azure.com/ashukumavat2410/Microservices-CICD/_git/Microservices-CICD
