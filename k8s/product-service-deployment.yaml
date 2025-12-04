@@ -1,0 +1,86 @@
+---
+# ---------------------------------------------------------
+# PRODUCT SERVICE (Flask 5001)
+# ---------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-service
+  # namespace: $(NAMESPACE)
+  labels:
+    app: product-service
+    version: $(VERSION)
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: product-service
+  template:
+    metadata:
+      labels:
+        app: product-service
+        version: $(VERSION)
+    spec:
+      serviceAccountName: $(SERVICE_ACCOUNT)
+      containers:
+        - name: product-service
+          image: surendraprajapati/product-service:125  # CI/CD will update the image dynamically
+          ports:
+            - containerPort: 5001
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /api/products/health
+              port: 5001
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/products/health
+              port: 5001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-service
+  # namespace: $(NAMESPACE)
+  labels:
+    app: product-service
+    version: $(VERSION)
+spec:
+  selector:
+    app: product-service
+  ports:
+    - protocol: TCP
+      port: 5001
+      targetPort: 5001
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: product-service-hpa
+  # namespace: $(NAMESPACE)
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: product-service
+  minReplicas: 2
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50

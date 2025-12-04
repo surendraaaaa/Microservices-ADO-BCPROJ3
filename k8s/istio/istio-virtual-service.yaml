@@ -1,0 +1,131 @@
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ecommerce-virtualservice
+  # namespace: $(NAMESPACE)
+spec:
+  hosts:
+    - "*"
+  gateways:
+    - ecommerce-gateway
+  http:
+    # Frontend: serve root and static assets
+    - name: "frontend-route"
+      match:
+        - uri:
+            prefix: "/"
+      route:
+        - destination:
+            host: frontend
+            port:
+              number: 3000
+      timeout: 30s
+      retries:
+        attempts: 2
+        perTryTimeout: 3s
+
+    # Product API
+    - name: "product-api"
+      match:
+        - uri:
+            prefix: "/api/products"
+      route:
+        - destination:
+            host: product-service
+            port:
+              number: 5001
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 2s
+
+    # Rating API
+    - name: "rating-api"
+      match:
+        - uri:
+            prefix: "/api/ratings"
+      route:
+        - destination:
+            host: rating-service
+            port:
+              number: 5002
+      timeout: 20s
+      retries:
+        attempts: 2
+        perTryTimeout: 2s
+
+    # User API
+    - name: "user-api"
+      match:
+        - uri:
+            prefix: "/api/users"
+      route:
+        - destination:
+            host: user-service
+            port:
+              number: 8080
+      timeout: 30s
+      retries:
+        attempts: 2
+        perTryTimeout: 3s
+
+    # Cart API
+    - name: "cart-api"
+      match:
+        - uri:
+            prefix: "/api/cart"
+      route:
+        - destination:
+            host: cart-service
+            port:
+              number: 3001
+      timeout: 30s
+      retries:
+        attempts: 2
+        perTryTimeout: 3s
+
+    # Order API
+    - name: "order-api"
+      match:
+        - uri:
+            prefix: "/api/orders"
+      route:
+        - destination:
+            host: order-service
+            port:
+              number: 8000
+      timeout: 60s
+      retries:
+        attempts: 3
+        perTryTimeout: 5s
+
+    # Payment API
+    - name: "payment-api"
+      match:
+        - uri:
+            prefix: "/api/payments"
+      route:
+        - destination:
+            host: payment-service
+            port:
+              number: 3002
+      timeout: 60s
+      retries:
+        attempts: 3
+        perTryTimeout: 5s
+
+---
+# =========================================================
+# ISTIO DESTINATION RULE (MTLS)
+# =========================================================
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: ecommerce-dr
+  # namespace: $(NAMESPACE)
+spec:
+  host: "*.$(NAMESPACE).svc.cluster.local"
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL

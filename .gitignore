@@ -1,0 +1,156 @@
+# ============================================
+# Global Node / React / Express
+# ============================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# React build output
+build/
+dist/
+.cache/
+.next/
+out/
+
+# Environment variables — SUPER IMPORTANT
+
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+logs/
+debug.log
+
+# ============================================
+# Docker / Container
+# ============================================
+docker-compose.override.yml
+.env.docker
+**/.dockerignore
+
+# ============================================
+# Terraform
+# ============================================
+**/.terraform/
+**/.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*.tfvars
+*.tfvars.json
+.terraformrc
+
+# Sensitive generated keys
+*.pem
+*.key
+*.p12
+*.tfplan
+
+# ============================================
+# Kubernetes
+# ============================================
+# Ignore local kubeconfig
+.kube/
+kubeconfig
+kubeconfig.yaml
+
+# Ignore Helm local files (if future usage)
+charts/**/charts/
+charts/**/templates/*.tpl
+charts/**/tmp/
+
+# ============================================
+# Python (if used in scripting)
+# ============================================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env.python
+.venv/
+venv/
+ENV/
+
+# ============================================
+# Jenkins / CI / CD
+# ============================================
+# Jenkins workspace artifacts
+.jenkins/
+jenkins_home/
+workspace/
+# Ignore build zips from pipelines
+*.zip
+*.tar
+*.gz
+
+# ============================================
+# IDE / OS files
+# ============================================
+# VSCode
+.vscode/
+.history/
+
+# JetBrains
+.idea/
+*.iml
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Linux
+*~
+.nfs*
+
+# ============================================
+# Project-specific
+# ============================================
+
+# AWS credentials or configs
+.aws/
+credentials
+
+# Ignore local test coverage
+coverage/
+
+# Ignore compiled binaries
+bin/
+obj/
+
+# Logs for microservices
+**/logs/
+
+# ============================================
+# Security
+# ============================================
+# Secrets
+secrets.yaml
+secret.json
+*.crt
+*.csr
+*.der
+
+# ============================================
+# Microservices CICD Repo Specific
+# ============================================
+
+# Ignore Azure DevOps artifacts
+_pipeline/
+temp/
+_tmp/
+
+# Any packaged deployment artifact
+artifacts/
+deploy/*
+output/
+

@@ -1,0 +1,140 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - payment-service/*
+
+variables:
+  DOCKER_REGISTRY: 'surendraprajapati'
+  IMAGE_NAME: 'payment-service'
+  NODE_VERSION: '18.x'
+
+stages:
+
+# Stage 1: Checkout
+- stage: Checkout
+  displayName: 'Checkout Code'
+  jobs:
+    - job: Checkout
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+        - checkout: self
+
+# Stage 2: Node Build
+- stage: NodeBuild
+  displayName: 'Install Dependencies & Build'
+  dependsOn: Checkout
+  jobs:
+    - job: NodeBuild
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+        - task: NodeTool@0
+          inputs:
+            versionSpec: '$(NODE_VERSION)'
+        - script: |
+            cd payment-service
+            npm install
+            npm run build || echo "No build script defined, skipping build"
+          displayName: 'Install Node dependencies & Build'
+
+        # Publish build as artifact (if any)
+        # - task: PublishPipelineArtifact@1
+        #   inputs:
+        #     targetPath: 'payment-service/build'
+        #     artifact: 'payment-service-build'
+        #     publishLocation: 'pipeline'
+
+# Stage 3: Docker Build
+- stage: DockerBuild
+  displayName: 'Build & Push Docker Image'
+  dependsOn: NodeBuild
+  jobs:
+    - job: Docker
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+        # Docker login
+        - task: Docker@2
+          inputs:
+            containerRegistry: 'docker-connection'
+            command: 'login'
+
+        # Build Docker image
+        - task: Docker@2
+          inputs:
+            repository: '$(DOCKER_REGISTRY)/$(IMAGE_NAME)'
+            command: 'build'
+            Dockerfile: 'payment-service/Dockerfile'
+            tags: '$(Build.BuildId)'
+
+        # Push Docker image
+        - task: Docker@2
+          inputs:
+            containerRegistry: 'docker-connection'
+            repository: '$(DOCKER_REGISTRY)/$(IMAGE_NAME)'
+            command: 'push'
+            tags: '$(Build.BuildId)'
+
+# Stage 4: Trivy Scan
+- stage: TrivyScan
+  displayName: 'Scan Docker Image with Trivy'
+  dependsOn: DockerBuild
+  jobs:
+    - job: Trivy
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+        - script: |
+            echo "Installing Trivy..."
+            sudo apt-get update
+            sudo apt-get install -y wget gnupg lsb-release
+            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+            echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+            sudo apt-get update
+            sudo apt-get install -y trivy
+        - script: |
+            echo "Running Trivy scan..."
+            docker pull $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(Build.BuildId)
+            trivy image --format table --output payment-service-image-scan.html $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(Build.BuildId)
+          displayName: 'Trivy Docker Image Scan'
+
+        - task: PublishPipelineArtifact@1
+          inputs:
+            targetPath: 'payment-service-image-scan.html'
+            artifact: 'trivy-report'
+            publishLocation: 'pipeline'
+
+# Stage 5: Update Docker Image Tag in Manifests
+- stage: UpdateManifest
+  displayName: 'Update Docker Image Tag in Kubernetes Manifests'
+  dependsOn: TrivyScan
+  variables:
+    - group: ado-token
+  jobs:
+    - job: UpdateManifest
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+        - checkout: self
+        - script: |
+            echo "Updating manifest via script..."
+            cd "$(Build.SourcesDirectory)"
+            ls -al update-manifest.sh
+            SERVICE_NAME="payment-service"
+            REGISTRY="$(DOCKER_REGISTRY)"
+            NEW_TAG="$(Build.BuildId)"
+            bash update-manifest.sh "$SERVICE_NAME" "$REGISTRY" "$NEW_TAG"
+          displayName: 'Run manifest update script'
+          env:
+            AZURE_DEVOPS_PAT: $(AZURE_DEVOPS_PAT)
+
+        - task: PublishPipelineArtifact@1
+          displayName: 'Publish updated Kubernetes manifests'
+          inputs:
+            targetPath: '$(Build.SourcesDirectory)/k8s/payment-service-deployment.yaml'
+            artifact: 'payment-service-manifest'
+            publishLocation: 'pipeline'
